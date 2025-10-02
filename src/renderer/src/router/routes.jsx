@@ -19,11 +19,11 @@ const routes = [
       },
       {
         path: '/video_jx',
-        element: <Suspense fallback={<Loading />}><VideoJx /></Suspense>
+        element: <Suspense fallback={<Loading />}><div style={ { padding: 5, maxWidth: 1000, width: '100%' } }><VideoJx /></div></Suspense>
       },
       {
         path: '/download_m3u8',
-        element: <Suspense fallback={<Loading />}><DownloadM3U8 /></Suspense>
+        element: <Suspense fallback={<Loading />}><div style={ { padding: 5, maxWidth: 1000, width: '100%' } }><DownloadM3U8 /></div></Suspense>
       },
     ]
   }
