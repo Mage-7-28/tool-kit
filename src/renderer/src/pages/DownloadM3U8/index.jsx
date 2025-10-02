@@ -1,7 +1,12 @@
+import {Result} from "antd";
+
 const DownloadM3U8 = () => {
   return (
     <div>
-      1234123132
+      <Result
+        status="warning"
+        title="页面开发中"
+      />
     </div>
   )
 }
