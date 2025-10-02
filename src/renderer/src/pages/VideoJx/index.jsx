@@ -1,11 +1,27 @@
 import {Button, Input, Select} from "antd";
 import {AppleOutlined, CodeOutlined, ReloadOutlined} from "@ant-design/icons";
 import {useState} from "react";
+import toast from "react-hot-toast";
+import {msgBoxStyle} from "../../style/Layout";
 
 const VideoJx = () => {
   const [api, setApi] = useState('https://jx.playerjy.com/?url=')
   const [videoPlayerKey, setVideoPlayerKey] = useState(Math.random())
   const [playerUrl, setPlayerUrl] = useState('')
+
+  const addUrlFocus = async () => {
+    const cutText = await navigator.clipboard.readText()
+    formatInputLink(cutText)
+    toast.success('链接自动从剪切板填入', { id: 'msgBoxGlobal', style: msgBoxStyle })
+  }
+
+  const formatInputLink = (link) => {
+    if (link && link.indexOf('?') !== -1) {
+      setPlayerUrl(link.toString().substring(0, link.toString().indexOf('?')))
+    } else {
+      setPlayerUrl(link)
+    }
+  }
 
   return (
     <div style={{width: '100%', aspectRatio: '16/9'}}>
@@ -47,7 +63,7 @@ const VideoJx = () => {
         {(api && api !== '#' && playerUrl) && <a href={api + playerUrl} title={'使用系统默认的浏览器播放'} target="_blank" rel="noreferrer"><Button type="primary" style={{marginLeft: 2, float: 'right', margin: 3, borderColor: 'rgb(116,116,126)'}} icon={<AppleOutlined/>}>系统播放</Button></a>}
         {<Button type="primary" style={{marginLeft: 2, float: 'right', margin: 3, borderColor: 'rgb(116,116,126)'}} icon={<CodeOutlined/>} onClick={() => window.api.openDevTools()}>DevTools</Button>}
       </div>
-      <Input value={ playerUrl } size={'large'} placeholder={'视频地址'} onChange={ e => setPlayerUrl(e.target.value) } />
+      <Input value={ playerUrl } size={'large'} placeholder={'视频地址'} onFocus={e => addUrlFocus(e)} />
     </div>
   )
 }
