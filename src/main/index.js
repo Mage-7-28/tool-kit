@@ -1,7 +1,9 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import {app, shell, BrowserWindow, ipcMain, dialog, Menu} from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import packageJson from '../../package.json'
+import { autoUpdater } from 'electron-updater'
 
 function createWindow() {
   // Create the browser window.
@@ -17,6 +19,90 @@ function createWindow() {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
     }
+  })
+
+  mainWindow.on('close', async (e) => {
+    e.preventDefault()		//阻止默认行为
+    const { response } = await dialog.showMessageBox(mainWindow, {
+      type: 'question',
+      noLink: true,
+      defaultId: 0,
+      cancelId: 0,
+      title: '提示',
+      message: '确定要关闭吗？',
+      buttons: [ '取消', '最小化', '直接退出' ]
+    })
+
+    if (response === 1) {
+      mainWindow.minimize()	// 调用 最小化实例方法
+    } else if (response === 2) {
+      // app.quit();	// 不要用quit();会弹两次
+      app.exit() // exit()直接关闭客户端，不会执行quit();
+    }
+  })
+
+  mainWindow.on('ready-to-show', () => {
+    Menu.setApplicationMenu(Menu.buildFromTemplate( [
+      { label: 'Magic' },
+      {
+        label: '编辑',
+        submenu: [
+          { label: '撤销', accelerator: 'CmdOrCtrl+Z', selector: 'undo:' },
+          { label: '重做', accelerator: 'CmdOrCtrl+Y', selector: 'redo:' },
+          { type: 'separator' },
+          { label: '剪切', accelerator: 'CmdOrCtrl+X', selector: 'cut:' },
+          { label: '复制', accelerator: 'CmdOrCtrl+C', selector: 'copy:' },
+          { label: '粘贴', accelerator: 'CmdOrCtrl+V', selector: 'paste:' },
+          { label: '全选', accelerator: 'CmdOrCtrl+A', selector: 'selectAll:' }
+        ]
+      },
+      {
+        label: '帮助',
+        submenu: [
+          {
+            label: '检查更新',
+            click: async () => {
+              const { response } = await dialog.showMessageBox(mainWindow, {
+                type: 'question',
+                buttons: [ '取消', '确定' ],
+                title: '检查更新',
+                noLink: true,
+                defaultId: 1,
+                cancelId: 0,
+                message: '是否检查新版本？'
+              })
+
+              if (response === 1) {
+                // if (autoUpdateUrl && token) {
+                  checkForUpdates()
+                // } else {
+                //   await dialog.showMessageBox(mainWindow, {
+                //     type: 'warning',
+                //     title: '提醒',
+                //     message: '请先登录系统！'
+                //   })
+                // }
+              }
+            }
+          },
+          {
+            label: '关于',
+            click: async () => {
+              const { dialog } = require('electron')
+              // 显示消息框提示用户功能尚未开发
+              await dialog.showMessageBox(mainWindow, {
+                type: 'none',
+                title: '关于',
+                message: `当前版本: ${ packageJson.version }`
+              })
+            }
+          },
+          { type: 'separator' },
+          { label: '退出', accelerator: 'Command+Q', click: function() { app.quit() } }
+        ]
+      }
+    ]))
+    mainWindow.show()
   })
 
   mainWindow.on('ready-to-show', () => {
@@ -35,6 +121,111 @@ function createWindow() {
     mainWindow.webContents.openDevTools()
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+  }
+
+  function checkForUpdates() {
+    // 配置自动更新选项
+    autoUpdater.autoDownload = false; // 设置为false以允许用户在更新可用时选择是否下载:cite[6]
+    autoUpdater.autoInstallOnAppQuit = false;
+
+    // 设置更新源
+    autoUpdater.setFeedURL({
+      provider: 'github',
+      owner: 'Mage-7-28',
+      repo: 'tool-kit',
+      releaseType: 'release',
+    });
+
+    // 检查更新
+    autoUpdater.checkForUpdates()
+
+    // 更新错误事件
+    if (!autoUpdater.listenerCount('error')) {
+      autoUpdater.on('error', (error) => {
+        console.error('检查更新出错:', error)
+        dialog.showMessageBox(mainWindow, {
+          type: 'warning',
+          title: '提醒',
+          message: '检查更新出错！'
+        })
+      })
+    }
+
+    // 检查更新事件
+    if (!autoUpdater.listenerCount('checking-for-update')) {
+      autoUpdater.on('checking-for-update', () => {
+        console.log('正在检查更新...')
+      })
+    }
+
+    // 发现新版本
+    if (!autoUpdater.listenerCount('update-available')) {
+      autoUpdater.on('update-available', (info) => {
+        const choice = dialog.showMessageBoxSync(mainWindow, {
+          type: 'info',
+          buttons: [ '稍后', '更新' ],
+          title: '发现新版本',
+          noLink: true,
+          defaultId: 1,
+          cancelId: 0,
+          message: `检测到新版本 ${ info.version }，是否立即更新？`
+        })
+
+        if (choice === 1) {
+          // 用户选择更新，创建进度弹窗
+          autoUpdater.downloadUpdate()
+        }
+      })
+    }
+
+    // 当前版本为最新版本
+    if (!autoUpdater.listenerCount('update-not-available')) {
+      autoUpdater.on('update-not-available', () => {
+        dialog.showMessageBox(mainWindow, {
+          type: 'warning',
+          title: '提醒',
+          message: '当前版本已经是最新版本。'
+        })
+      })
+    }
+
+    // 下载进度事件
+    autoUpdater.on('download-progress', (progress) => {
+      // const message = `已下载 ${ Math.round(progress.percent) }% (${ progress.transferred }/${ progress.total })`
+
+      mainWindow.setProgressBar(Math.round(progress.percent) / 100)
+      // const options = {
+      //   type: 'info',
+      //   defaultId: 0,
+      //   title: '正在下载更新...',
+      //   message: message,
+      //   cancelId: 0,
+      //   noLink: true,
+      //   customButtons: []
+      // }
+      //
+      // dialog.showMessageBox(mainWindow, options)
+    })
+
+    // 下载完成事件
+    if (!autoUpdater.listenerCount('update-downloaded')) {
+      autoUpdater.on('update-downloaded', () => {
+        const choice = dialog.showMessageBoxSync(mainWindow, {
+          type: 'info',
+          buttons: [ '稍后安装', '立即安装' ],
+          title: '更新完成',
+          noLink: true,
+          defaultId: 1,
+          cancelId: 0,
+          message: '更新包已下载完成，是否立即安装并重启应用？'
+        })
+
+        if (choice === 1) {
+          // C:\Users\xxxxx\AppData\Local\magic-desktop-updater
+          autoUpdater.quitAndInstall() // 安装并退出应用
+        }
+      })
+    }
   }
   return mainWindow
 }
