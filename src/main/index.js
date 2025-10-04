@@ -124,6 +124,8 @@ function createWindow() {
   }
 
   function checkForUpdates() {
+    // 在开发环境调试更新
+    // autoUpdater.forceDevUpdateConfig = true
     // 配置自动更新选项
     autoUpdater.autoDownload = false; // 设置为false以允许用户在更新可用时选择是否下载:cite[6]
     autoUpdater.autoInstallOnAppQuit = false;
