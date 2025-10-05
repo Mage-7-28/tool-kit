@@ -142,16 +142,15 @@ function createWindow() {
     autoUpdater.checkForUpdates()
 
     // 更新错误事件
-    if (!autoUpdater.listenerCount('error')) {
+    // if (!autoUpdater.listenerCount('error')) {
       autoUpdater.on('error', (error) => {
-        console.error('检查更新出错:', error)
         dialog.showMessageBox(mainWindow, {
           type: 'warning',
           title: '提醒',
-          message: '检查更新出错！'
+          message: error.message.toString().toUpperCase().includes('ERR_CONNECTION_CLOSED') ? '连接异常，' : '更新出错，'
         })
       })
-    }
+    // }
 
     // 检查更新事件
     if (!autoUpdater.listenerCount('checking-for-update')) {
